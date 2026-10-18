@@ -1,7 +1,11 @@
 /** DTOs que viajan por la API interna (lado cliente). */
 
+import type { Channel } from "@/lib/channels";
+
 export type ConversationDto = {
   id: string;
+  /** 014: canal de la conversacion, para el distintivo de la bandeja. */
+  channel: Channel;
   contact: { id: string; name: string; phone: string | null };
   stageName: string | null;
   aiEnabled: boolean;
@@ -12,7 +16,42 @@ export type ConversationDto = {
   unreadCount: number;
   windowOpen: boolean;
   windowRemainingMs: number;
+  /**
+   * 024 — La ventana humana del canal (Instagram y Messenger:
+   * hasta 7 días con la etiqueta de agente humano). `null` en un canal que no
+   * la tiene. `open` = la ventana normal ya cerró pero una persona todavía
+   * puede contestar; `remainingMs` es lo que le queda.
+   */
+  humanWindow: { open: boolean; remainingMs: number } | null;
+  /**
+   * 028 — Lo que el compositor puede ofrecer en este canal: adjuntos, y
+   * ubicación o contacto. El servidor rechaza lo demás igual.
+   */
+  composer: { media: boolean; structured: boolean };
   preview: string | null;
+  /** 018: el anuncio que abrió la conversación, para la marca de la lista. */
+  anuncio: {
+    headline: string | null;
+    sourceId: string | null;
+    /** `post` si fue una publicación y no un anuncio. */
+    sourceType: string | null;
+  } | null;
+};
+
+/** 018 — De qué anuncio llegó un contacto, como lo ve la bandeja. */
+export type AnuncioDto = {
+  sourceId: string | null;
+  sourceType: string | null;
+  /** Solo https. */
+  sourceUrl: string | null;
+  headline: string | null;
+  body: string | null;
+  mediaType: string | null;
+  /** Imagen del creativo, servida por `/api/media/{id}`. */
+  imageAssetId: string | null;
+  /** Si Meta mandó identificador de clic. El valor no sale del servidor. */
+  hasCtwaClid: boolean;
+  capturedAt: string;
 };
 
 /** 008 — Adjunto de un mensaje, para previsualización en el hilo. */
@@ -68,6 +107,16 @@ export type StageDto = {
   kind: "open" | "won" | "lost";
 };
 
+/** Un dato de la ficha. Escalar a propósito: ver `server/bot/ficha`. */
+export type FichaValue = string | number | boolean;
+
+/**
+ * Ficha de calificación del lead. Claves libres: cada negocio califica
+ * distinto, así que las define quien pregunta —el agente o el dueño— y el CRM
+ * no las cablea.
+ */
+export type FichaDto = Record<string, FichaValue>;
+
 export type ContactDto = {
   id: string;
   name: string;
@@ -77,4 +126,63 @@ export type ContactDto = {
   /** Etapa del embudo del lead asociado; null si el contacto no tiene lead. */
   stageName: string | null;
   archivedAt: string | null;
+  /** De dónde salió el prospecto, capturada o deducida. */
+  source?: SourceDto;
+  /** Prioridad del lead asociado; null si nadie la fijó. */
+  priority?: PriorityValue | null;
+  /** Lo que se sabe del lead. `{}` mientras nadie haya calificado. */
+  ficha?: FichaDto;
+  /** 027 — El agente no le responde a esta persona: la atiende el dueño. */
+  aiPaused?: boolean;
 };
+
+/* ============================================================
+ * Bitácora de etapas
+ * ============================================================ */
+
+/** Por qué se perdió un trato. Lista corta a propósito: una taxonomía larga
+ *  se responde "otro" y deja de informar. */
+export type LossReason =
+  | "precio"
+  | "no_es_perfil"
+  | "sin_presupuesto"
+  | "eligio_otro"
+  | "nunca_contesto"
+  | "otro";
+
+export const LOSS_REASON_LABEL: Record<LossReason, string> = {
+  precio: "Le pareció caro",
+  no_es_perfil: "No era el perfil",
+  sin_presupuesto: "Sin presupuesto ahora",
+  eligio_otro: "Se fue con otro",
+  nunca_contesto: "Nunca contestó",
+  otro: "Otro",
+};
+
+/** Quién provocó un movimiento de etapa. */
+export type StageChangeSource = "dueno" | "bot" | "sistema" | "migracion";
+
+/* ============================================================
+ * Fuente del prospecto
+ * ============================================================ */
+
+export type SourceValue =
+  | "anuncio"
+  | "organico"
+  | "referido"
+  | "conocido"
+  | "otro";
+
+export type SourceDto = {
+  /** "desconocida" cuando nadie la capturó y no se pudo deducir. */
+  value: SourceValue | "desconocida";
+  /** `deducida` = la infirió el sistema; `capturada` = la puso el dueño. */
+  source: "capturada" | "deducida";
+};
+
+/* ============================================================
+ * Prioridad del lead
+ * ============================================================ */
+
+/** La fija el dueño; NULL = nadie la ha decidido (no es "media"). */
+export type PriorityValue = "alta" | "media" | "baja";

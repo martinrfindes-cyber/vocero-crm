@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
 import { useEvents } from "@/components/use-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,9 +128,14 @@ export function LabClient() {
             Configura tu proveedor de IA para usar el Laboratorio
           </p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            El Laboratorio necesita el agente activo: agrega{" "}
-            <code className="rounded bg-secondary px-1">OPENROUTER_API_TOKEN</code> a la
-            instancia y vuelve aquí.
+            El Laboratorio necesita un proveedor de IA activo: configúralo en{" "}
+            <Link
+              href="/settings/ai"
+              className="font-medium text-brand-text underline underline-offset-2"
+            >
+              Ajustes → IA
+            </Link>{" "}
+            y vuelve aquí.
           </p>
         </div>
       </div>
@@ -145,7 +152,7 @@ export function LabClient() {
         onLaunch={() => void launch()}
         disabled={false}
       />
-      {error && <p className="px-6 pt-3 text-sm text-destructive">{error}</p>}
+      {error && <p className="px-4 pt-3 text-sm text-destructive sm:px-6">{error}</p>}
 
       {running && progress && (
         <div className="mx-6 mt-4 rounded-lg border bg-card p-4">
@@ -164,7 +171,7 @@ export function LabClient() {
         </div>
       )}
 
-      <div className="grid gap-6 p-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-[280px_1fr]">
         <HistoryList
           runs={runs}
           selectedRunId={selectedRunId}
@@ -173,11 +180,16 @@ export function LabClient() {
         {detail ? (
           <Report detail={detail} onApplied={() => void refetchDetail(detail.run.id)} />
         ) : (
-          <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-            {runs.length === 0
-              ? "Corre tu primera evaluación: 6 clientes simulados conversarán con tu agente y un juez calificará cada conversación."
-              : "Elige una corrida del historial."}
-          </div>
+          <EmptyState
+            icon={FlaskConical}
+            className="rounded-lg border border-dashed p-10"
+            title={runs.length === 0 ? "Sin corridas todavía" : "Elige una corrida"}
+            description={
+              runs.length === 0
+                ? "Corre tu primera evaluación: 6 clientes simulados conversarán con tu agente y un juez calificará cada conversación."
+                : "Abre una corrida del historial para ver su reporte."
+            }
+          />
         )}
       </div>
     </div>
@@ -196,9 +208,9 @@ function Header({
   disabled: boolean;
 }) {
   return (
-    <header className="flex items-center justify-between border-b px-6 py-4">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
       <div>
-        <h2 className="flex items-center gap-2 font-semibold">
+        <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
           <FlaskConical className="h-4 w-4 text-primary" /> Laboratorio
         </h2>
         <p className="text-xs text-muted-foreground">
@@ -224,7 +236,7 @@ function HistoryList({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="kicker">
         Historial
       </p>
       {runs.length === 0 && (
@@ -234,8 +246,8 @@ function HistoryList({
         <button
           key={run.id}
           onClick={() => onSelect(run.id)}
-          className={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-accent/50 ${
-            selectedRunId === run.id ? "border-primary/50 bg-accent/60" : "bg-card"
+          className={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-accent ${
+            selectedRunId === run.id ? "border-brand bg-brand-tint" : "border-border-strong bg-card"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -314,7 +326,7 @@ function Report({
               ))}
             </div>
             {cases.some((c) => c.status === "judge_failed") && (
-              <p className="mt-3 text-xs text-[#8a6d3b]">
+              <p className="mt-3 text-xs text-warning-text">
                 {cases.filter((c) => c.status === "judge_failed").length} caso(s) sin
                 veredicto (el juez no respondió válido); excluidos del score.
               </p>
@@ -337,7 +349,7 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
     c.veredicto === "verde" ? (
       <CheckCircle2 className="h-4 w-4 text-success" />
     ) : c.veredicto === "amarillo" ? (
-      <AlertTriangle className="h-4 w-4 text-[#8a6d3b]" />
+      <AlertTriangle className="h-4 w-4 text-warning-text" />
     ) : c.veredicto === "rojo" ? (
       <XCircle className="h-4 w-4 text-destructive" />
     ) : (
@@ -369,8 +381,8 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
           {c.hallazgos.map((h, i) => (
             <HallazgoCard key={i} hallazgo={h} caseId={c.id} index={i} onApplied={onApplied} />
           ))}
-          <div className="rounded-md border bg-background/40 p-3">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-md border bg-background p-3">
+            <p className="mb-2 kicker">
               Transcript
             </p>
             <div className="space-y-1.5 text-sm">
@@ -378,7 +390,7 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
                 <p key={i}>
                   <span
                     className={
-                      t.role === "cliente" ? "text-[#5b7291]" : "text-primary"
+                      t.role === "cliente" ? "text-info" : "text-primary"
                     }
                   >
                     {t.role === "cliente" ? "Cliente" : "Agente"}:
@@ -427,7 +439,7 @@ function HallazgoCard({
   }
 
   return (
-    <div className="rounded-md border border-[#ece2cf] bg-[#faf7f0] p-3">
+    <div className="rounded-md border border-warning-soft bg-warning-tint p-3">
       <div className="flex items-center justify-between">
         <Badge variant="warning">{TIPO_LABELS[hallazgo.tipo]}</Badge>
         {hallazgo.sugerencia && !applied && !editing && (
